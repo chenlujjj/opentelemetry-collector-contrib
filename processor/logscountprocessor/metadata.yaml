@@ -1,0 +1,9 @@
+type: logscount
+
+status:
+  class: processor
+  stability:
+    development: [logs]
+  distributions: [contrib]
+  codeowners:
+    active: [nobody]
