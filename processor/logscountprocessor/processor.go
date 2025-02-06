@@ -66,6 +66,8 @@ func (p *logscountProcessor) Start(ctx context.Context, _ component.Host) error 
 func (p *logscountProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	p.logger.Info("logscountProcessor consume logs")
 
+	total1 := ld.LogRecordCount()
+
 	counter := make(map[string]logsSize) // key is the value of groupKey, value is the size
 
 	groupValues := make([]string, len(p.config.GroupByAttrs))
@@ -91,10 +93,10 @@ func (p *logscountProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 		}
 	}
 
-
-
+	total2 := 0
 	zapFields := make([]zap.Field, len(p.config.GroupByAttrs)+2)
 	for groupVal, cnt := range counter {
+		total2 += cnt.lines
 		zapFields[0] = zap.Int("lines", cnt.lines)
 		zapFields[1] = zap.Int("bytes", cnt.bytes)
 		for i := range p.config.GroupByAttrs {
@@ -106,6 +108,8 @@ func (p *logscountProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 		p.logger.Info("###### count logs", zapFields...)
 
 	}
+
+	p.logger.Info("##### total logs", zap.Int("total1", total1), zap.Int("total2", total2))
 
 	p.nextConsumer.ConsumeLogs(ctx, ld)
 	return nil
