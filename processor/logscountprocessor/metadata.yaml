@@ -7,3 +7,13 @@ status:
   distributions: [contrib]
   codeowners:
     active: [nobody]
+
+telemetry:
+  metrics:
+    processor_logs_count:
+      enabled: true
+      description: Number of logs processed
+      unit: "1"
+      sum:
+        value_type: int
+        monotonic: true

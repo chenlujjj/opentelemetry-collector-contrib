@@ -5,14 +5,16 @@ package logscountprocessor // import "github.com/open-telemetry/opentelemetry-co
 
 import (
 	"context"
-	"errors"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/processorhelper"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/logscountprocessor/internal/metadata"
 )
+
+var processorCapabilities = consumer.Capabilities{MutatesData: false}
 
 // NewFactory returns a new factory for the Logs Count processor.
 func NewFactory() processor.Factory {
@@ -23,14 +25,26 @@ func NewFactory() processor.Factory {
 }
 
 func createLogsProcessor(
-	_ context.Context,
+	ctx context.Context,
 	set processor.Settings,
 	cfg component.Config,
 	nextConsumer consumer.Logs) (processor.Logs, error) {
-	pCfg, ok := cfg.(*Config)
-	if !ok {
-		return nil, errors.New("could not initialize logs count processor")
+	// pCfg, ok := cfg.(*Config)
+	// if !ok {
+	// 	return nil, errors.New("could not initialize logs count processor")
+	// }
+
+	p, err := newProcessor(cfg.(*Config), set)
+	if err != nil {
+		return nil, err
 	}
 
-	return newProcessor(pCfg, nextConsumer, set.Logger)
+	return processorhelper.NewLogs(
+		ctx,
+		set,
+		cfg,
+		nextConsumer,
+		p.processLogs,
+		processorhelper.WithCapabilities(processorCapabilities),
+	)
 }

@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
 
@@ -21,8 +20,10 @@ const separator = "::"
 type logscountProcessor struct {
 	logger *zap.Logger
 	config *Config
-	nextConsumer consumer.Logs
+	// nextConsumer consumer.Logs
 	groupKey string
+
+	telemetry *telemetry
 }
 
 type logsSize struct {
@@ -30,14 +31,20 @@ type logsSize struct {
 	bytes int
 }
 
-func newProcessor(config *Config, nextConsumer consumer.Logs, logger *zap.Logger) (*logscountProcessor, error) {
+func newProcessor(config *Config, set processor.Settings) (*logscountProcessor, error) {
+	telemetry, err := newTelemetry(set)
+	if err != nil {
+		return nil, fmt.Errorf("error creating logs count processor telemetry: %w", err)
+	}
+
 	groupKey := strings.Join(config.GroupByAttrs, separator)
 
 	p := &logscountProcessor{
-		logger:       logger,
+		logger:       set.Logger,
 		config:       config,
-		nextConsumer: nextConsumer,
+		// nextConsumer: nextConsumer,
 		groupKey:     groupKey,
+		telemetry:   telemetry,
 	}
 
 	p.logger.Info("##### create logscountProcessor", zap.String("groupKey", groupKey))
@@ -45,25 +52,21 @@ func newProcessor(config *Config, nextConsumer consumer.Logs, logger *zap.Logger
 	return p, nil
 }
 
-// Capabilities returns the consumer's capabilities.
-func (p *logscountProcessor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: false}
-}
 
-// Shutdown stops the processor.
-func (p *logscountProcessor) Shutdown(ctx context.Context) error {
-	p.logger.Info("logscountProcessor shutdown")
-	return nil
-}
+// // Shutdown stops the processor.
+// func (p *logscountProcessor) Shutdown(ctx context.Context) error {
+// 	p.logger.Info("logscountProcessor shutdown")
+// 	return nil
+// }
 
-// Start starts the processor.
-func (p *logscountProcessor) Start(ctx context.Context, _ component.Host) error {
-	p.logger.Info("logscountProcessor start")
-	return nil
-}
+// // Start starts the processor.
+// func (p *logscountProcessor) Start(ctx context.Context, _ component.Host) error {
+// 	p.logger.Info("logscountProcessor start")
+// 	return nil
+// }
 
 // ConsumeLogs processes the logs.
-func (p *logscountProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+func (p *logscountProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error)  {
 	p.logger.Info("logscountProcessor consume logs")
 
 	total1 := ld.LogRecordCount()
@@ -113,9 +116,10 @@ func (p *logscountProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 
 
 	p.logger.Info("##### total logs", zap.Int("total", total1))
+	p.telemetry.record(ctx, int64(total1))
 
-	p.nextConsumer.ConsumeLogs(ctx, ld)
-	return nil
+	// p.nextConsumer.ConsumeLogs(ctx, ld)
+	return ld, nil
 }
 
 // NOTE: splunk log field name cannot start with "_"
