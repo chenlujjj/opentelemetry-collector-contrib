@@ -13,7 +13,7 @@ import (
 // refer to: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/filterprocessor/telemetry.go
 
 type telemetry struct {
-	attr    metric.MeasurementOption
+	attr         metric.MeasurementOption
 	linesCounter metric.Int64Counter
 	bytesCounter metric.Int64Counter
 }
@@ -25,7 +25,7 @@ func newTelemetry(set processor.Settings) (*telemetry, error) {
 	}
 
 	return &telemetry{
-		attr:    metric.WithAttributeSet(attribute.NewSet(attribute.String(metadata.Type.String(), set.ID.String()))),
+		attr:         metric.WithAttributeSet(attribute.NewSet(attribute.String(metadata.Type.String(), set.ID.String()))),
 		linesCounter: telemetryBuilder.ProcessorLogsLinesTotal,
 		bytesCounter: telemetryBuilder.ProcessorLogsBytesTotal,
 	}, nil

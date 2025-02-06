@@ -15,12 +15,11 @@ import (
 	"go.uber.org/zap"
 )
 
-
 const separator = "::"
 
 type logscountProcessor struct {
-	logger *zap.Logger
-	config *Config
+	logger   *zap.Logger
+	config   *Config
 	groupKey string
 
 	telemetry *telemetry
@@ -40,17 +39,16 @@ func newProcessor(config *Config, set processor.Settings) (*logscountProcessor, 
 	groupKey := strings.Join(config.GroupByAttrs, separator)
 
 	p := &logscountProcessor{
-		logger:       set.Logger,
-		config:       config,
-		groupKey:     groupKey,
-		telemetry:   telemetry,
+		logger:    set.Logger,
+		config:    config,
+		groupKey:  groupKey,
+		telemetry: telemetry,
 	}
 
 	p.logger.Info("##### create logscountProcessor", zap.String("groupKey", groupKey))
 
 	return p, nil
 }
-
 
 // // Shutdown stops the processor.
 // func (p *logscountProcessor) Shutdown(ctx context.Context) error {
@@ -64,7 +62,7 @@ func newProcessor(config *Config, set processor.Settings) (*logscountProcessor, 
 // 	return nil
 // }
 
-func (p *logscountProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error)  {
+func (p *logscountProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error) {
 	p.logger.Info("logscountProcessor consume logs")
 
 	total1 := ld.LogRecordCount()
@@ -95,26 +93,28 @@ func (p *logscountProcessor) processLogs(ctx context.Context, ld plog.Logs) (plo
 	}
 
 	total2 := 0
-	zapFields := make([]zap.Field, len(p.config.GroupByAttrs)+2)
 	kvs := make([]attribute.KeyValue, len(p.config.GroupByAttrs))
 	for groupVal, cnt := range counter {
 		total2 += cnt.lines
-		zapFields[0] = zap.Int("lines", cnt.lines)
-		zapFields[1] = zap.Int("bytes", cnt.bytes)
+
+		zapFields := make([]zap.Field, 0, len(p.config.GroupByAttrs)+2)
 		for i := range p.config.GroupByAttrs {
 			attr := p.config.GroupByAttrs[i]
 			value := strings.Split(groupVal, separator)[i]
-			zapFields[i+2] = zap.String(decorateGroupAttr(attr), value)
+			zapFields = append(zapFields, zap.String(decorateGroupAttr(attr), value))
 
 			kvs[i] = attribute.String(decorateGroupAttr(attr), value)
 		}
+		zapFields = append(zapFields, zap.Int("lines", cnt.lines), zap.Int("bytes", cnt.bytes))
 
 		p.logger.Info("###### count logs", zapFields...)
 
-		p.telemetry.record(ctx, int64(cnt.lines), int64(cnt.bytes) ,kvs...)
+		p.telemetry.record(ctx, int64(cnt.lines), int64(cnt.bytes), kvs...)
 	}
 
 	p.logger.Info("##### total logs", zap.Int("total1", total1), zap.Int("total2", total2))
+
+	fmt.Printf("##### total logs, total1: %d, total2: %d\n", total1, total2)
 
 
 	// p.logger.Info("##### total logs", zap.Int("total", total1))

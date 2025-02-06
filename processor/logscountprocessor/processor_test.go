@@ -8,8 +8,6 @@ package logscountprocessor
 // import "go.opentelemetry.io/collector/consumer/consumertest"
 // import "github.com/stretchr/testify/require"
 
-
-
 // func Test_newProcessor(t *testing.T) {
 // 	testCases := []struct {
 // 		desc        string
