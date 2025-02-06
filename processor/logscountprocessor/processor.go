@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +21,6 @@ const separator = "::"
 type logscountProcessor struct {
 	logger *zap.Logger
 	config *Config
-	// nextConsumer consumer.Logs
 	groupKey string
 
 	telemetry *telemetry
@@ -42,7 +42,6 @@ func newProcessor(config *Config, set processor.Settings) (*logscountProcessor, 
 	p := &logscountProcessor{
 		logger:       set.Logger,
 		config:       config,
-		// nextConsumer: nextConsumer,
 		groupKey:     groupKey,
 		telemetry:   telemetry,
 	}
@@ -65,60 +64,61 @@ func newProcessor(config *Config, set processor.Settings) (*logscountProcessor, 
 // 	return nil
 // }
 
-// ConsumeLogs processes the logs.
 func (p *logscountProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error)  {
 	p.logger.Info("logscountProcessor consume logs")
 
 	total1 := ld.LogRecordCount()
 
-	// counter := make(map[string]logsSize) // key is the value of groupKey, value is the size
+	counter := make(map[string]logsSize) // key is the value of groupKey, value is the size
 
-	// groupValues := make([]string, len(p.config.GroupByAttrs))
-	// for i := 0; i < ld.ResourceLogs().Len(); i++ {
-	// 	rl := ld.ResourceLogs().At(i)
-	// 	attrs := rl.Resource().Attributes()
-	// 	for idx, attr := range p.config.GroupByAttrs {
-	// 		val, ok := attrs.Get(attr)
-	// 		if !ok {
-	// 			groupValues[idx] = "unknown"
-	// 		} else {
-	// 			groupValues[idx] = val.AsString()
-	// 		}
-	// 	}
-	// 	groupValue := strings.Join(groupValues, separator)
+	groupValues := make([]string, len(p.config.GroupByAttrs))
+	for i := 0; i < ld.ResourceLogs().Len(); i++ {
+		rl := ld.ResourceLogs().At(i)
+		attrs := rl.Resource().Attributes()
+		for idx, attr := range p.config.GroupByAttrs {
+			val, ok := attrs.Get(attr)
+			if !ok {
+				groupValues[idx] = "unknown"
+			} else {
+				groupValues[idx] = val.AsString()
+			}
+		}
+		groupValue := strings.Join(groupValues, separator)
 
-	// 	size := resourceLogsSize(rl)
-	// 	if _, ok := counter[groupValue]; !ok {
-	// 		counter[groupValue] = size
-	// 	} else {
-	// 		orig := counter[groupValue]
-	// 		counter[groupValue] = logsSize{lines: orig.lines + size.lines, bytes: orig.bytes + size.bytes}
-	// 	}
-	// }
+		size := resourceLogsSize(rl)
+		if _, ok := counter[groupValue]; !ok {
+			counter[groupValue] = size
+		} else {
+			orig := counter[groupValue]
+			counter[groupValue] = logsSize{lines: orig.lines + size.lines, bytes: orig.bytes + size.bytes}
+		}
+	}
 
-	// total2 := 0
-	// zapFields := make([]zap.Field, len(p.config.GroupByAttrs)+2)
-	// for groupVal, cnt := range counter {
-	// 	total2 += cnt.lines
-	// 	zapFields[0] = zap.Int("lines", cnt.lines)
-	// 	zapFields[1] = zap.Int("bytes", cnt.bytes)
-	// 	for i := range p.config.GroupByAttrs {
-	// 		attr := p.config.GroupByAttrs[i]
-	// 		value := strings.Split(groupVal, separator)[i]
-	// 		zapFields[i+2] = zap.String(decorateGroupAttr(attr), value)
-	// 	}
+	total2 := 0
+	zapFields := make([]zap.Field, len(p.config.GroupByAttrs)+2)
+	kvs := make([]attribute.KeyValue, len(p.config.GroupByAttrs))
+	for groupVal, cnt := range counter {
+		total2 += cnt.lines
+		zapFields[0] = zap.Int("lines", cnt.lines)
+		zapFields[1] = zap.Int("bytes", cnt.bytes)
+		for i := range p.config.GroupByAttrs {
+			attr := p.config.GroupByAttrs[i]
+			value := strings.Split(groupVal, separator)[i]
+			zapFields[i+2] = zap.String(decorateGroupAttr(attr), value)
 
-	// 	p.logger.Info("###### count logs", zapFields...)
+			kvs[i] = attribute.String(decorateGroupAttr(attr), value)
+		}
 
-	// }
+		p.logger.Info("###### count logs", zapFields...)
 
-	// p.logger.Info("##### total logs", zap.Int("total1", total1), zap.Int("total2", total2))
+		p.telemetry.record(ctx, int64(cnt.lines), int64(cnt.bytes) ,kvs...)
+	}
+
+	p.logger.Info("##### total logs", zap.Int("total1", total1), zap.Int("total2", total2))
 
 
-	p.logger.Info("##### total logs", zap.Int("total", total1))
-	p.telemetry.record(ctx, int64(total1))
+	// p.logger.Info("##### total logs", zap.Int("total", total1))
 
-	// p.nextConsumer.ConsumeLogs(ctx, ld)
 	return ld, nil
 }
 

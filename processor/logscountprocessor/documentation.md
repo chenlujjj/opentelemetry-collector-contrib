@@ -6,9 +6,17 @@
 
 The following telemetry is emitted by this component.
 
-### otelcol_processor_logs_count
+### otelcol_processor_logs_bytes_total
 
-Number of logs processed
+Total bytes of logs processed
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| By | Sum | Int | true |
+
+### otelcol_processor_logs_lines_total
+
+Total lines of logs processed
 
 | Unit | Metric Type | Value Type | Monotonic |
 | ---- | ----------- | ---------- | --------- |

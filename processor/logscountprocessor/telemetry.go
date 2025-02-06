@@ -14,7 +14,8 @@ import (
 
 type telemetry struct {
 	attr    metric.MeasurementOption
-	counter metric.Int64Counter
+	linesCounter metric.Int64Counter
+	bytesCounter metric.Int64Counter
 }
 
 func newTelemetry(set processor.Settings) (*telemetry, error) {
@@ -23,14 +24,14 @@ func newTelemetry(set processor.Settings) (*telemetry, error) {
 		return nil, err
 	}
 
-	var counter metric.Int64Counter = telemetryBuilder.ProcessorLogsCount
-
 	return &telemetry{
 		attr:    metric.WithAttributeSet(attribute.NewSet(attribute.String(metadata.Type.String(), set.ID.String()))),
-		counter: counter,
+		linesCounter: telemetryBuilder.ProcessorLogsLinesTotal,
+		bytesCounter: telemetryBuilder.ProcessorLogsBytesTotal,
 	}, nil
 }
 
-func (t *telemetry) record(ctx context.Context, cnt int64) {
-	t.counter.Add(ctx, cnt, t.attr)
+func (t *telemetry) record(ctx context.Context, lines int64, bytes int64, attrs ...attribute.KeyValue) {
+	t.linesCounter.Add(ctx, lines, t.attr, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+	t.bytesCounter.Add(ctx, bytes, t.attr, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }

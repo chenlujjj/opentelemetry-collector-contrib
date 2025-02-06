@@ -18,12 +18,25 @@ func TestSetupTelemetry(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, tb)
-	tb.ProcessorLogsCount.Add(context.Background(), 1)
+	tb.ProcessorLogsBytesTotal.Add(context.Background(), 1)
+	tb.ProcessorLogsLinesTotal.Add(context.Background(), 1)
 
 	testTel.AssertMetrics(t, []metricdata.Metrics{
 		{
-			Name:        "otelcol_processor_logs_count",
-			Description: "Number of logs processed",
+			Name:        "otelcol_processor_logs_bytes_total",
+			Description: "Total bytes of logs processed",
+			Unit:        "By",
+			Data: metricdata.Sum[int64]{
+				Temporality: metricdata.CumulativeTemporality,
+				IsMonotonic: true,
+				DataPoints: []metricdata.DataPoint[int64]{
+					{},
+				},
+			},
+		},
+		{
+			Name:        "otelcol_processor_logs_lines_total",
+			Description: "Total lines of logs processed",
 			Unit:        "1",
 			Data: metricdata.Sum[int64]{
 				Temporality: metricdata.CumulativeTemporality,

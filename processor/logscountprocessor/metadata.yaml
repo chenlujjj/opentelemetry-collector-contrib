@@ -10,10 +10,17 @@ status:
 
 telemetry:
   metrics:
-    processor_logs_count:
+    processor_logs_lines_total:
       enabled: true
-      description: Number of logs processed
+      description: Total lines of logs processed
       unit: "1"
+      sum:
+        value_type: int
+        monotonic: true
+    processor_logs_bytes_total:
+      enabled: true
+      description: Total bytes of logs processed
+      unit: "By"
       sum:
         value_type: int
         monotonic: true

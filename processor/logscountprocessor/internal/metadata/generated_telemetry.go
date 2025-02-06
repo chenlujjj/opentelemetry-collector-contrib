@@ -22,8 +22,9 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter              metric.Meter
-	ProcessorLogsCount metric.Int64Counter
+	meter                   metric.Meter
+	ProcessorLogsBytesTotal metric.Int64Counter
+	ProcessorLogsLinesTotal metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -46,9 +47,15 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	}
 	builder.meter = Meter(settings)
 	var err, errs error
-	builder.ProcessorLogsCount, err = builder.meter.Int64Counter(
-		"otelcol_processor_logs_count",
-		metric.WithDescription("Number of logs processed"),
+	builder.ProcessorLogsBytesTotal, err = builder.meter.Int64Counter(
+		"otelcol_processor_logs_bytes_total",
+		metric.WithDescription("Total bytes of logs processed"),
+		metric.WithUnit("By"),
+	)
+	errs = errors.Join(errs, err)
+	builder.ProcessorLogsLinesTotal, err = builder.meter.Int64Counter(
+		"otelcol_processor_logs_lines_total",
+		metric.WithDescription("Total lines of logs processed"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
