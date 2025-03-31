@@ -77,6 +77,13 @@ func (mr *monitoringReceiver) Shutdown(context.Context) error {
 }
 
 func (mr *monitoringReceiver) Scrape(ctx context.Context) (pmetric.Metrics, error) {
+	start := time.Now()
+	mr.logger.Info("Starting to scrape metrics from Google Cloud Monitoring")
+	defer func() {
+		mr.logger.Info("Finish scraping metrics from Google Cloud Monitoring", zap.Duration("duration", time.Since(start)))
+	}()
+
+
 	var (
 		gInterval    time.Duration
 		gDelay       time.Duration
@@ -125,8 +132,11 @@ func (mr *monitoringReceiver) Scrape(ctx context.Context) (pmetric.Metrics, erro
 		mr.logger.Debug("Retrieving time series data")
 
 		// Iterate over the time series data
+		var tsCnt int
+		st := time.Now()
 		for {
 			timeSeries, err := tsIter.Next()
+			tsCnt += 1
 			if errors.Is(err, iterator.Done) {
 				break
 			}
@@ -140,6 +150,7 @@ func (mr *monitoringReceiver) Scrape(ctx context.Context) (pmetric.Metrics, erro
 			// Convert and append the metric directly within the loop
 			mr.convertGCPTimeSeriesToMetrics(metrics, metricDesc, timeSeries)
 		}
+		mr.logger.Info("Successfully retrieved time series data", zap.String("type", metricType), zap.String("name", metricDesc.Name), zap.Int("count", tsCnt), zap.Duration("duration", time.Since(st)))
 	}
 
 	return metrics, gErr
