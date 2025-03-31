@@ -113,6 +113,15 @@ func (mr *monitoringReceiver) Scrape(ctx context.Context) (pmetric.Metrics, erro
 		// Calculate the start and end times
 		calStartTime, calEndTime = calculateStartEndTime(gInterval, gDelay)
 
+		mr.logger.Info("Calculating start and end times for metrics",
+			zap.String("metric_type", metricType),
+			zap.String("metric_name", metricDesc.Name),
+			zap.Time("start_time", calStartTime),
+			zap.Time("end_time", calEndTime),
+			zap.Duration("interval", gInterval),
+			zap.Duration("delay", gDelay),
+		)
+
 		// Get the filter query for the metric
 		filterQuery = fmt.Sprintf(`metric.type = "%s"`, metricType)
 
